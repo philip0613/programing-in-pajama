@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://program-in-pazama.onrender.com';
+import { apiFetch } from './api/client';
+import ApiHealthCheck from './components/ApiHealthCheck';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -17,6 +17,7 @@ function App() {
 
   // 1. 로그인 상태 구독
   useEffect(() => {
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -27,8 +28,7 @@ function App() {
   // 2. 게시글 목록 불러오기 함수
   const fetchPosts = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/posts`);
-      const data = await res.json();
+      const data = await apiFetch('/api/posts');
       if (Array.isArray(data)) setPosts(data);
     } catch (err) {
       console.error('게시글 로드 실패:', err);
@@ -42,6 +42,7 @@ function App() {
   // 3. 인증 관련 핸들러
   const handleLogin = async () => {
     setAuthMsg('');
+    if (!supabase) return setAuthMsg('Supabase 환경 변수가 설정되지 않아 로그인할 수 없습니다.');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setAuthMsg(`로그인 실패: ${error.message}`);
   };
@@ -59,16 +60,11 @@ function App() {
 
     setPostLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/posts`, {
+      await apiFetch('/api/posts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
+        token: session.access_token,
         body: JSON.stringify({ title, content })
       });
-
-      if (!res.ok) throw new Error('게시글 등록에 실패했습니다.');
 
       setTitle('');
       setContent('');
@@ -84,6 +80,7 @@ function App() {
     <div style={{ maxWidth: '640px', margin: '40px auto', padding: '20px', fontFamily: 'sans-serif' }}>
       <h2>🚀 SOYO 미니 게시판</h2>
 
+      <ApiHealthCheck />
       {/* 로그인 영역 */}
       <section style={{ padding: '16px', background: '#f8f9fa', borderRadius: '8px', marginBottom: '24px' }}>
         {session ? (
