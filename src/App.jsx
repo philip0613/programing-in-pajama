@@ -8,6 +8,7 @@ function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authMsg, setAuthMsg] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
   
   // 게시판 상태
   const [posts, setPosts] = useState([]);
@@ -15,7 +16,7 @@ function App() {
   const [content, setContent] = useState('');
   const [postLoading, setPostLoading] = useState(false);
 
-  // 1. 로그인 상태 구독
+  // 1. 로그인 세션 상태 감지
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -24,7 +25,7 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. 게시글 목록 불러오기 함수
+  // 2. 게시글 목록 불러오기
   const fetchPosts = async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/posts`);
@@ -39,19 +40,41 @@ function App() {
     fetchPosts();
   }, []);
 
-  // 3. 인증 관련 핸들러
-  const handleLogin = async () => {
+  // 3. 회원가입 핸들러
+  const handleSignUp = async () => {
+    if (!email || !password) return setAuthMsg('이메일과 비밀번호를 모두 입력해주세요.');
+    setAuthLoading(true);
     setAuthMsg('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setAuthMsg(`로그인 실패: ${error.message}`);
+
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      setAuthMsg(`회원가입 실패: ${error.message}`);
+    } else {
+      setAuthMsg('회원가입 완료! 이제 로그인 버튼을 눌러보세요.');
+    }
+    setAuthLoading(false);
   };
 
+  // 4. 로그인 핸들러
+  const handleLogin = async () => {
+    if (!email || !password) return setAuthMsg('이메일과 비밀번호를 모두 입력해주세요.');
+    setAuthLoading(true);
+    setAuthMsg('');
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setAuthMsg(`로그인 실패: ${error.message}`);
+    }
+    setAuthLoading(false);
+  };
+
+  // 5. 로그아웃 핸들러
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setAuthMsg('로그아웃되었습니다.');
   };
 
-  // 4. 글 작성 핸들러
+  // 6. 글 작성 핸들러
   const handleCreatePost = async (e) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return alert('제목과 내용을 입력해주세요.');
@@ -72,7 +95,7 @@ function App() {
 
       setTitle('');
       setContent('');
-      await fetchPosts(); // 목록 갱신
+      await fetchPosts();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -84,7 +107,7 @@ function App() {
     <div style={{ maxWidth: '640px', margin: '40px auto', padding: '20px', fontFamily: 'sans-serif' }}>
       <h2>🚀 SOYO 미니 게시판</h2>
 
-      {/* 로그인 영역 */}
+      {/* 인증 (로그인 / 회원가입) 영역 */}
       <section style={{ padding: '16px', background: '#f8f9fa', borderRadius: '8px', marginBottom: '24px' }}>
         {session ? (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -108,9 +131,26 @@ function App() {
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ flex: 1, padding: '8px' }}
               />
-              <button onClick={handleLogin} style={{ padding: '8px 16px', cursor: 'pointer' }}>로그인</button>
+              <button 
+                onClick={handleLogin} 
+                disabled={authLoading} 
+                style={{ padding: '8px 14px', cursor: 'pointer' }}
+              >
+                로그인
+              </button>
+              <button 
+                onClick={handleSignUp} 
+                disabled={authLoading} 
+                style={{ padding: '8px 14px', cursor: 'pointer', backgroundColor: '#e9ecef', border: '1px solid #ced4da', borderRadius: '4px' }}
+              >
+                회원가입
+              </button>
             </div>
-            {authMsg && <p style={{ color: '#e74c3c', fontSize: '13px', margin: 0 }}>{authMsg}</p>}
+            {authMsg && (
+              <p style={{ color: authMsg.includes('실패') ? '#e74c3c' : '#2ecc71', fontSize: '13px', margin: 0 }}>
+                {authMsg}
+              </p>
+            )}
           </div>
         )}
       </section>
