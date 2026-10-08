@@ -3,6 +3,14 @@ import { API_BASE_URL, checkHealth } from '../api/client';
 
 function ApiHealthCheck() {
   const [state, setState] = useState({ status: 'loading', data: null, error: '' });
+  const [slow, setSlow] = useState(false);
+
+  // 무료 서버(Render)는 한동안 안 쓰면 잠들어서, 첫 응답까지 최대 1분 정도 걸릴 수 있음
+  useEffect(() => {
+    if (state.status !== 'loading') return setSlow(false);
+    const timer = setTimeout(() => setSlow(true), 4000);
+    return () => clearTimeout(timer);
+  }, [state.status]);
 
   const runCheck = async () => {
     setState({ status: 'loading', data: null, error: '' });
@@ -26,7 +34,12 @@ function ApiHealthCheck() {
         <strong style={{ color: colors[state.status] }}>
           {state.status === 'loading' && '⏳ 백엔드 연결 확인 중...'}
           {state.status === 'ok' && `✅ ${state.data.message}`}
-          {state.status === 'error' && '❌ 백엔드 연결 실패'}
+          {state.status === 'loading' && slow && (
+        <div style={{ color: '#e17055', marginTop: '4px' }}>
+          💤 서버가 잠들어 있었다면 깨어나는 데 최대 1분 걸려요. 잠시만 기다려주세요! (무료 서버 특징)
+        </div>
+      )}
+      {state.status === 'error' && '❌ 백엔드 연결 실패'}
         </strong>
         <button onClick={runCheck} style={{ padding: '4px 10px', cursor: 'pointer' }}>다시 확인</button>
       </div>
