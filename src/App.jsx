@@ -19,9 +19,40 @@ function App() {
   const [activeTab, setActiveTab] = useState('recommended');
   const [myPageResetKey, setMyPageResetKey] = useState(0);
 
+  // 브라우저 뒤로가기(Alt + ←, 브라우저 상단 뒤로가기 버튼) 히스토리 동기화
+  useEffect(() => {
+    // 최초 상태 저장
+    if (!window.history.state) {
+      window.history.replaceState({ activeScreen: 'auth', authMode: 'login', activeTab: 'recommended' }, '');
+    }
+
+    const handlePopState = (event) => {
+      if (event.state) {
+        if (event.state.activeScreen) setActiveScreen(event.state.activeScreen);
+        if (event.state.authMode) setAuthMode(event.state.authMode);
+        if (event.state.activeTab) setActiveTab(event.state.activeTab);
+      } else {
+        setActiveScreen('auth');
+        setAuthMode('login');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 화면 전환 시 브라우저 히스토리 스택에 push
+  const navigateTo = (screen, mode = 'login', tab = activeTab) => {
+    setActiveScreen(screen);
+    setAuthMode(mode);
+    if (tab) setActiveTab(tab);
+    window.history.pushState({ activeScreen: screen, authMode: mode, activeTab: tab }, '');
+  };
+
   const handleTabChange = (tab) => {
     if (tab === 'myPage') setMyPageResetKey((key) => key + 1);
     setActiveTab(tab);
+    window.history.pushState({ activeScreen: 'main', authMode, activeTab: tab }, '');
   };
 
   // 로그인 상태 구독
@@ -40,7 +71,7 @@ function App() {
       return (
         <SignupFlow
           initialDraft={signupDraft}
-          onBack={() => setAuthMode('login')}
+          onBack={() => navigateTo('auth', 'login')}
           onComplete={async (form) => {
             const actualProfile = {
               userName: form.name,
@@ -87,7 +118,7 @@ function App() {
 
             // 가입 완료 후 로그인 화면으로 돌아가서 로그인하도록 안내
             setAuthNotice('회원가입이 완료되었습니다. 로그인해 주세요.');
-            setAuthMode('login');
+            navigateTo('auth', 'login');
           }}
         />
       );
@@ -98,42 +129,74 @@ function App() {
         onSignup={(draft) => {
           setAuthNotice('');
           setSignupDraft(draft || { loginId: '', password: '' });
-          setAuthMode('signup');
+          navigateTo('auth', 'signup');
         }}
         onLogin={async ({ loginId, user }) => {
           if (user?.profile) {
             await updateProfile(null, user.profile);
           }
           setIsLoggedIn(true);
-          setActiveScreen('main');
-          setActiveTab('myPage'); // 가입/로그인 후 마이페이지로 바로 안내
+          navigateTo('main', 'login', 'myPage'); // 로그인 성공 시 마이페이지로 이동
         }}
-        onSkip={() => setActiveScreen('main')}
+        onSkip={() => navigateTo('main', 'login', 'recommended')}
       />
     );
   }
 
-  const goToLogin = () => { setAuthNotice(''); setAuthMode('login'); setActiveScreen('auth'); };
+  const goToLogin = () => {
+    setAuthNotice('');
+    navigateTo('auth', 'login');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setAuthNotice('로그아웃되었습니다.');
+    navigateTo('auth', 'login');
+  };
 
   return (
     <div style={{ maxWidth: '420px', minHeight: '100vh', margin: '0 auto', display: 'flex', flexDirection: 'column', background: '#fff', boxShadow: '0 0 0 1px #eee' }}>
       <main style={{ flex: 1 }}>
-        {activeTab === 'myPage' && <MyPageFlow session={session} resetKey={myPageResetKey} isLoggedIn={isLoggedIn} onLogin={goToLogin} onLogout={() => setIsLoggedIn(false)} />}
+        {activeTab === 'myPage' && (
+          <MyPageFlow
+            session={session}
+            resetKey={myPageResetKey}
+            isLoggedIn={isLoggedIn}
+            onLogin={goToLogin}
+            onLogout={handleLogout}
+          />
+        )}
 
-        {activeTab === 'walk' && <ComingSoon name="산책" />}
-        {activeTab === 'recommended' && <ComingSoon name="홈" />}
+        {activeTab === 'walk' && <ComingSoon name="산책" onBackToAuth={goToLogin} />}
+        {activeTab === 'recommended' && <ComingSoon name="홈" onBackToAuth={goToLogin} />}
       </main>
       <BottomNav activeTab={activeTab} onChange={handleTabChange} />
     </div>
   );
 }
 
-// 아직 만들지 않은 탭에 보여주는 안내
-function ComingSoon({ name }) {
+// 아직 만들지 않은 탭에 보여주는 안내 (상단 뒤로가기 헤더 포함)
+function ComingSoon({ name, onBackToAuth }) {
   return (
-    <p style={{ marginTop: '80px', textAlign: 'center', color: '#888', fontSize: '14px' }}>
-      {name} 화면은 구현 예정이에요
-    </p>
+    <div style={{ padding: '16px' }}>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+        <button
+          type="button"
+          onClick={onBackToAuth}
+          style={{ background: 'none', border: 'none', fontSize: '14px', color: '#16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 8px', borderRadius: '4px' }}
+        >
+          ‹ 로그인 화면으로
+        </button>
+        <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#333' }}>SOYO</span>
+        <span style={{ width: '80px' }}></span>
+      </header>
+      <div style={{ marginTop: '100px', textAlign: 'center' }}>
+        <p style={{ color: '#888', fontSize: '15px', lineHeight: 1.6 }}>
+          <strong>{name}</strong> 화면은 구현 예정이에요.<br />
+          아래 <strong>마이페이지(👤)</strong> 메뉴를 클릭해 보세요.
+        </p>
+      </div>
+    </div>
   );
 }
 
