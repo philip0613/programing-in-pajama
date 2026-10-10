@@ -141,20 +141,13 @@ export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
       console.warn('⚠️ [이메일 검증 실패] 올바른 이메일 형식이 아닙니다.');
       return setAuthMessage('먼저 올바른 E-mail 주소를 입력해 주세요.');
     }
-    try {
-      console.log('🚀 [백엔드 API 호출] /api/auth/email/send-code 요청 중...');
-      setAuthMessage('인증번호를 발송하는 중...');
-      const res = await sendEmailCode(form.email);
-      console.log('✅ [인증번호 발송 성공] 서버 응답:', res);
-      setCodeSent(true);
-      setVerified(false);
-      setAuthMessage(res?.message || '인증코드가 발송되었습니다. (시연용 번호: 123456)');
-    } catch (err) {
-      console.warn('⚠️ [백엔드 연결 지연 또는 배포 반영 중] 시연 모드(123456)로 안내합니다:', err.message);
-      setCodeSent(true);
-      setVerified(false);
-      setAuthMessage('인증번호가 발송되었습니다. (시연용 번호: 123456)');
-    }
+
+    console.log('🚀 [이메일 인증번호 발송 요청] 대상 이메일 주소:', form.email);
+    const res = await sendEmailCode(form.email);
+    console.log('✅ [인증번호 발송 성공] 인증번호(123456)가 발송되었습니다.');
+    setCodeSent(true);
+    setVerified(false);
+    setAuthMessage(res?.message || '인증코드가 발송되었습니다. (인증번호: 123456)');
   }
 
   async function verifyCode() {
@@ -163,26 +156,17 @@ export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
       console.warn('⚠️ [인증 확인 실패] 인증번호가 입력되지 않았습니다.');
       return setAuthMessage('인증번호를 입력해 주세요.');
     }
-    try {
-      console.log('🚀 [백엔드 API 호출] /api/auth/email/verify-code 검증 요청...');
-      const res = await verifyEmailCode(form.email, form.code);
-      if (res?.verified) {
-        console.log('✅ [이메일 인증 성공] 백엔드 검증 완료');
-        setVerified(true);
-        setAuthMessage('E-mail 인증이 완료됐어요.');
-        return;
-      }
-    } catch (err) {
-      console.warn('⚠️ [백엔드 검증 지연] 시연 모드 로컬 코드(123456) 검증을 진행합니다.');
-      if (form.code === '123456') {
-        console.log('✅ [이메일 인증 성공] 시연용 코드 일치 확인');
-        setVerified(true);
-        setAuthMessage('E-mail 인증이 완료됐어요.');
-        return;
-      }
+
+    const res = await verifyEmailCode(form.email, form.code);
+    if (res?.verified) {
+      console.log('✅ [이메일 인증 성공] 이메일 인증이 성공적으로 완료되었습니다.');
+      setVerified(true);
+      setAuthMessage('E-mail 인증이 완료됐어요.');
+      return;
     }
+
     console.warn('❌ [인증 실패] 인증번호가 일치하지 않습니다.');
-    setAuthMessage('인증번호를 확인해 주세요. (시연용 번호: 123456)');
+    setAuthMessage('인증번호를 확인해 주세요. (인증번호: 123456)');
   }
 
   function addMedication(event) {
