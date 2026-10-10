@@ -5,6 +5,7 @@ import MyPageFlow from './pages/mypage/MyPageFlow';
 import LoginPage from './pages/LoginPage';
 import SignupFlow from './pages/SignupFlow';
 import { updateProfile } from './api/user';
+import { saveUserProfile } from './api/auth';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -39,7 +40,22 @@ function App() {
         <SignupFlow
           onBack={() => setAuthMode('login')}
           onComplete={async (form) => {
-            // 시연용: 가입 정보를 가짜 회원 정보에 저장 (백엔드 연결 후 실제 가입으로 교체)
+            try {
+              // 백엔드로 건강 프로필 데이터 전송
+              await saveUserProfile({
+                userId: session?.user?.id || form.loginId,
+                name: form.name,
+                birth: form.birthDate,
+                allergies: form.allergies,
+                diseases: form.diseaseIds,
+                medications: form.medications,
+                noAllergy: form.noAllergy,
+                noDisease: form.noDisease,
+                noMedication: form.noMedication
+              });
+            } catch (apiErr) {
+              console.warn('백엔드 프로필 저장 대기:', apiErr.message);
+            }
             await updateProfile(null, { userName: form.name, email: form.email, birthDate: form.birthDate, allergies: form.allergies, diseaseIds: form.diseaseIds, medications: form.medications });
             setAuthNotice('가입 정보 입력이 완료됐어요. 로그인해 주세요.');
             setAuthMode('login');

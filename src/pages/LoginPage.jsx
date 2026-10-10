@@ -1,12 +1,10 @@
 import { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
-// 로그인 화면 — 변수 이름은 SOYO 통합 변수 명세서 기준 (⚠️ loginId 는 명세서에 아직 없음)
-// 실제 로그인(Supabase 연결)은 나중에. 지금은 아이디·비밀번호를 입력하면 시연용으로 로그인돼요.
-
+// 로그인 화면 — 카카오, 구글 소셜 로그인 지원
 const socialLogins = [
-  { name: '카카오', image: '/pic/카카오톡.png', className: 'kakao' },
-  { name: '네이버', image: '/pic/네이버.png', className: 'naver' },
-  { name: '구글', image: '/pic/구글.png', className: 'google' },
+  { name: '카카오', image: '/pic/카카오톡.png', className: 'kakao', provider: 'kakao' },
+  { name: '구글', image: '/pic/구글.png', className: 'google', provider: 'google' },
 ];
 
 export default function LoginPage({ onSignup, onLogin, onSkip, initialNotice = '' }) {
@@ -26,6 +24,22 @@ export default function LoginPage({ onSignup, onLogin, onSkip, initialNotice = '
 
   function showNotice(text) {
     setAuthMessage(text);
+  }
+
+  async function handleSocialLogin(provider) {
+    if (!supabase) {
+      return showNotice('Supabase 클라이언트가 설정되지 않았습니다.');
+    }
+    showNotice(`${provider === 'kakao' ? '카카오' : '구글'} 로그인으로 이동 중...`);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    if (error) {
+      showNotice(`로그인 오류: ${error.message}`);
+    }
   }
 
   return (
@@ -96,7 +110,7 @@ export default function LoginPage({ onSignup, onLogin, onSkip, initialNotice = '
                 className={`social-button ${social.className}`}
                 type="button"
                 aria-label={`${social.name} 로그인`}
-                onClick={() => showNotice(`${social.name} 로그인은 준비 중이에요.`)}
+                onClick={() => handleSocialLogin(social.provider)}
               >
                 <img src={social.image} alt="" />
               </button>

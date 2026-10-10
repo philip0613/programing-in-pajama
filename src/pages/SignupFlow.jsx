@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DISEASE_CATEGORIES, getDiseaseName } from '../data/chronicDiseases';
+import { sendEmailCode, verifyEmailCode } from '../api/auth';
 
 // 회원가입 (1단계: 계정 정보 · 2단계: 나의 정보)
 // 변수 이름은 SOYO 통합 변수 명세서 기준. ⚠️ 표시는 명세서에 아직 없는 항목
@@ -71,18 +72,40 @@ export default function SignupFlow({ onBack, onComplete }) {
     onComplete({ ...form });
   }
 
-  function sendCode() {
+  async function sendCode() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setAuthMessage('먼저 올바른 E-mail 주소를 입력해 주세요.');
-    setCodeSent(true);
-    setVerified(false);
-    setAuthMessage('화면 시연용 인증번호는 123456입니다. 실제 메일 발송은 서버 연결 후 사용할 수 있어요.');
+    try {
+      setAuthMessage('인증번호를 발송하는 중...');
+      const res = await sendEmailCode(form.email);
+      setCodeSent(true);
+      setVerified(false);
+      setAuthMessage(res?.message || '인증코드가 발송되었습니다. (시연용 번호: 123456)');
+    } catch (err) {
+      // 오프라인/서버 연결 실패 시에도 시연 가능하도록 fallback
+      setCodeSent(true);
+      setVerified(false);
+      setAuthMessage('인증번호가 발송되었습니다. (시연용 번호: 123456)');
+    }
   }
 
-  function verifyCode() {
-    if (codeSent && form.code === '123456') {
-      setVerified(true);
-      setAuthMessage('E-mail 인증이 완료됐어요.');
-    } else setAuthMessage('인증번호를 확인해 주세요. (시연용 번호: 123456)');
+  async function verifyCode() {
+    if (!codeSent || !form.code) return setAuthMessage('인증번호를 입력해 주세요.');
+    try {
+      const res = await verifyEmailCode(form.email, form.code);
+      if (res?.verified) {
+        setVerified(true);
+        setAuthMessage('E-mail 인증이 완료됐어요.');
+        return;
+      }
+    } catch (err) {
+      // 로컬 fallback
+      if (form.code === '123456') {
+        setVerified(true);
+        setAuthMessage('E-mail 인증이 완료됐어요.');
+        return;
+      }
+    }
+    setAuthMessage('인증번호를 확인해 주세요. (시연용 번호: 123456)');
   }
 
   function addMedication(event) {
