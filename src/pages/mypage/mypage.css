@@ -1,0 +1,91 @@
+/* 마이페이지 탭 (No.10 ~ No.12) — 클래스 이름은 mp- 로 시작해서 다른 화면과 겹치지 않게 */
+.mp-screen {
+  position: relative;
+  min-height: 100%;
+  padding: 24px 20px 32px;
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", Arial, sans-serif;
+  color: #171717;
+}
+
+.mp-page { display: flex; flex-direction: column; }
+.mp-form { min-height: calc(100vh - 140px); }
+
+.mp-title { margin: 8px 0 28px; font-size: 22px; font-weight: 700; }
+.mp-title-left { margin-bottom: 6px; }
+.mp-title-center { text-align: center; }
+.mp-subtitle { margin: 0 0 22px; font-size: 12px; color: #8a8a8a; }
+.mp-section-title { margin: 28px 0 10px; font-size: 13px; font-weight: 700; }
+.mp-state { margin-top: 60px; text-align: center; color: #8a8a8a; }
+
+
+/* No.10 프로필 카드 */
+.mp-profile-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 14px; border-radius: 12px; background: #f4f4f2;
+}
+.mp-logged-out { flex-direction: column; text-align: center; font-size: 13px; color: #555; }
+.mp-avatar {
+  flex: none; width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; object-fit: cover;
+  background: #e3f2d4; color: #3d7a1f; font-weight: 700;
+}
+.mp-profile-text { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.mp-profile-text strong { font-size: 15px; }
+.mp-profile-text span { font-size: 11px; color: #777; overflow: hidden; text-overflow: ellipsis; }
+.mp-pill-button {
+  flex: none; padding: 7px 12px; border: 0; border-radius: 999px;
+  background: #2f80ed; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+
+/* No.10 메뉴 / No.12 대분류 공통 카드 */
+.mp-menu, .mp-category-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.mp-menu-item, .mp-category {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 14px 12px; border: 1px solid #e3e3e3; border-radius: 10px;
+  background: #fff; text-align: left; font: inherit; color: inherit; cursor: pointer;
+}
+.mp-menu-item > span:first-child { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.mp-menu-item strong { font-size: 13px; }
+.mp-menu-item small { font-size: 10px; color: #8a8a8a; }
+.mp-chevron { margin-left: auto; color: #999; font-size: 18px; transition: transform 0.15s; }
+.mp-chevron.open { transform: rotate(90deg); }
+
+/* No.12 기저질환 */
+.mp-category-icon { flex: none; width: 28px; height: 28px; border-radius: 6px; background: #efefeb; }
+.mp-category-icon.active { background: #e3f2d4; }
+.mp-category-name { display: flex; flex-direction: column; gap: 3px; font-size: 13px; font-weight: 600; }
+.mp-category-name small { font-size: 10px; font-weight: 500; color: #4f9a2a; }
+.mp-disease-box {
+  margin: 6px 0 2px; padding: 12px 14px; border: 0; border-radius: 10px;
+  background: #f4f4f2; display: flex; flex-direction: column; gap: 8px;
+}
+.mp-disease-box legend { float: left; width: 100%; margin-bottom: 4px; font-size: 12px; font-weight: 700; }
+.mp-check { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+.mp-check input { width: 14px; height: 14px; accent-color: #333; }
+
+/* No.11 입력칸 */
+.mp-input-wrap { position: relative; display: block; margin-bottom: 8px; }
+.mp-input {
+  width: 100%; box-sizing: border-box; height: 42px; padding: 0 12px;
+  border: 1px solid #dcdcdc; border-radius: 8px; font: inherit; font-size: 13px; background: #fff;
+}
+.mp-input:focus { outline: 2px solid #b9e58a; border-color: #9bcf68; }
+.mp-notice { margin: 4px 0 0; font-size: 12px; color: #e74c3c; }
+
+.mp-primary-button {
+  width: 100%; height: 44px; margin-top: 18px; border: 0; border-radius: 8px;
+  background: #111; color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.mp-form .mp-primary-button { margin-top: auto; }
+.mp-primary-button:disabled { opacity: 0.6; cursor: default; }
+
+.mp-toast {
+  position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%);
+  padding: 9px 16px; border-radius: 999px; background: rgba(17, 17, 17, 0.88);
+  color: #fff; font-size: 12px; white-space: nowrap; z-index: 20;
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
