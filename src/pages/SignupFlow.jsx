@@ -9,14 +9,14 @@ const ALLERGY_OPTIONS = ['식품', '약물', '꽃가루·먼지', '기타']; // 
 // 비밀번호 조건: 영문 + 숫자 + 특수문자(!@#$%^&*) 포함 8자 이상
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
 
-export default function SignupFlow({ onBack, onComplete }) {
+export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    loginId: '',          // ⚠️ 로그인 아이디 (userId 는 Supabase 시스템 ID 라서 다른 이름 사용)
-    password: '',
-    passwordConfirm: '',
+    loginId: initialDraft?.loginId || '',          // 로그인 화면에서 전달받은 아이디 자동 채움
+    password: initialDraft?.password || '',        // 로그인 화면에서 전달받은 비밀번호 자동 채움
+    passwordConfirm: initialDraft?.password || '', // 비밀번호 확인 자동 채움
     email: '',
-    code: '',             // 이메일 인증번호 (이메일 인증은 나중에 구현)
+    code: '',             // 이메일 인증번호
     termsAgreed: false,   // 필수 약관 동의
     name: '',
     birthDate: '',        // 생년월일 (DB birth_date)
@@ -55,12 +55,42 @@ export default function SignupFlow({ onBack, onComplete }) {
 
   function continueToProfile(event) {
     event.preventDefault();
-    if (form.loginId.trim().length < 4) return setAuthMessage('아이디를 4자 이상 입력해 주세요.');
-    if (!isPasswordValid) return setAuthMessage('비밀번호 조건을 확인해 주세요.');
-    if (form.password !== form.passwordConfirm) return setAuthMessage('비밀번호가 일치하지 않아요.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setAuthMessage('올바른 E-mail 주소를 입력해 주세요.');
-    if (!verified) return setAuthMessage('E-mail 인증을 완료해 주세요.');
-    if (!form.termsAgreed) return setAuthMessage('필수 약관에 동의해 주세요.');
+    console.log('📌 [회원가입 1단계 확인] 입력값 검증 시작:', {
+      loginId: form.loginId,
+      hasPassword: Boolean(form.password),
+      isPasswordValid,
+      isPasswordMatched: form.password === form.passwordConfirm,
+      email: form.email,
+      verified,
+      termsAgreed: form.termsAgreed
+    });
+
+    if (form.loginId.trim().length < 4) {
+      console.warn('⚠️ [검증 실패] 아이디가 4자 미만입니다.');
+      return setAuthMessage('아이디를 4자 이상 입력해 주세요.');
+    }
+    if (!isPasswordValid) {
+      console.warn('⚠️ [검증 실패] 비밀번호 조건(영문+숫자+특수문자 8자 이상) 미충족');
+      return setAuthMessage('비밀번호 조건을 확인해 주세요.');
+    }
+    if (form.password !== form.passwordConfirm) {
+      console.warn('⚠️ [검증 실패] 비밀번호 확인 불일치');
+      return setAuthMessage('비밀번호가 일치하지 않아요.');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      console.warn('⚠️ [검증 실패] 이메일 형식 오류');
+      return setAuthMessage('올바른 E-mail 주소를 입력해 주세요.');
+    }
+    if (!verified) {
+      console.warn('⚠️ [검증 실패] 이메일 인증 미완료');
+      return setAuthMessage('E-mail 인증을 완료해 주세요.');
+    }
+    if (!form.termsAgreed) {
+      console.warn('⚠️ [검증 실패] 필수 약관 미동의');
+      return setAuthMessage('필수 약관에 동의해 주세요.');
+    }
+
+    console.log('✅ [검증 통과] 1단계 계정 정보 확인 완료 ➔ 2단계 나의 정보 입력으로 이동');
     setStep(2);
     setAuthMessage('');
   }
@@ -73,15 +103,21 @@ export default function SignupFlow({ onBack, onComplete }) {
   }
 
   async function sendCode() {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setAuthMessage('먼저 올바른 E-mail 주소를 입력해 주세요.');
+    console.log('📌 [인증번호 전송 버튼 클릭] 대상 이메일:', form.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      console.warn('⚠️ [이메일 검증 실패] 올바른 이메일 형식이 아닙니다.');
+      return setAuthMessage('먼저 올바른 E-mail 주소를 입력해 주세요.');
+    }
     try {
+      console.log('🚀 [백엔드 API 호출] /api/auth/email/send-code 요청 중...');
       setAuthMessage('인증번호를 발송하는 중...');
       const res = await sendEmailCode(form.email);
+      console.log('✅ [인증번호 발송 성공] 서버 응답:', res);
       setCodeSent(true);
       setVerified(false);
       setAuthMessage(res?.message || '인증코드가 발송되었습니다. (시연용 번호: 123456)');
     } catch (err) {
-      // 오프라인/서버 연결 실패 시에도 시연 가능하도록 fallback
+      console.warn('⚠️ [백엔드 연결 지연 또는 배포 반영 중] 시연 모드(123456)로 안내합니다:', err.message);
       setCodeSent(true);
       setVerified(false);
       setAuthMessage('인증번호가 발송되었습니다. (시연용 번호: 123456)');
@@ -89,22 +125,30 @@ export default function SignupFlow({ onBack, onComplete }) {
   }
 
   async function verifyCode() {
-    if (!codeSent || !form.code) return setAuthMessage('인증번호를 입력해 주세요.');
+    console.log('📌 [인증 확인 버튼 클릭] 입력된 인증코드:', form.code);
+    if (!codeSent || !form.code) {
+      console.warn('⚠️ [인증 확인 실패] 인증번호가 입력되지 않았습니다.');
+      return setAuthMessage('인증번호를 입력해 주세요.');
+    }
     try {
+      console.log('🚀 [백엔드 API 호출] /api/auth/email/verify-code 검증 요청...');
       const res = await verifyEmailCode(form.email, form.code);
       if (res?.verified) {
+        console.log('✅ [이메일 인증 성공] 백엔드 검증 완료');
         setVerified(true);
         setAuthMessage('E-mail 인증이 완료됐어요.');
         return;
       }
     } catch (err) {
-      // 로컬 fallback
+      console.warn('⚠️ [백엔드 검증 지연] 시연 모드 로컬 코드(123456) 검증을 진행합니다.');
       if (form.code === '123456') {
+        console.log('✅ [이메일 인증 성공] 시연용 코드 일치 확인');
         setVerified(true);
         setAuthMessage('E-mail 인증이 완료됐어요.');
         return;
       }
     }
+    console.warn('❌ [인증 실패] 인증번호가 일치하지 않습니다.');
     setAuthMessage('인증번호를 확인해 주세요. (시연용 번호: 123456)');
   }
 

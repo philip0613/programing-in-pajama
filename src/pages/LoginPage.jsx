@@ -140,7 +140,16 @@ export default function LoginPage({ onSignup, onLogin, onSkip, initialNotice = '
         </div>
 
         <div className="bottom-actions">
-          <button className="signup-button" type="button" onClick={onSignup}>회원가입</button>
+          <button
+            className="signup-button"
+            type="button"
+            onClick={() => {
+              console.log('📌 [회원가입 버튼 클릭] 입력된 아이디/비밀번호를 회원가입 화면으로 전달합니다:', { loginId, hasPassword: Boolean(password) });
+              onSignup({ loginId, password });
+            }}
+          >
+            회원가입
+          </button>
           <button className="text-button skip-button" type="button" onClick={onSkip}>건너뛰기</button>
         </div>
       </section>

@@ -13,6 +13,7 @@ function App() {
   const [activeScreen, setActiveScreen] = useState('auth'); // 'auth' | 'main'
   const [authMode, setAuthMode] = useState('login');
   const [authNotice, setAuthNotice] = useState('');
+  const [signupDraft, setSignupDraft] = useState({ loginId: '', password: '' });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   // 하단 메뉴 선택 (변수 명세서 activeTab: walk / recommended / records / myPage)
   const [activeTab, setActiveTab] = useState('recommended');
@@ -38,6 +39,7 @@ function App() {
     if (authMode === 'signup') {
       return (
         <SignupFlow
+          initialDraft={signupDraft}
           onBack={() => setAuthMode('login')}
           onComplete={async (form) => {
             const actualProfile = {
@@ -93,7 +95,11 @@ function App() {
     return (
       <LoginPage
         initialNotice={authNotice}
-        onSignup={() => { setAuthNotice(''); setAuthMode('signup'); }}
+        onSignup={(draft) => {
+          setAuthNotice('');
+          setSignupDraft(draft || { loginId: '', password: '' });
+          setAuthMode('signup');
+        }}
         onLogin={async ({ loginId, user }) => {
           if (user?.profile) {
             await updateProfile(null, user.profile);
