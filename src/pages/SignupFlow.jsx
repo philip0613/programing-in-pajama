@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '../supabaseClient';
 import { DISEASE_CATEGORIES, getDiseaseName } from '../data/chronicDiseases';
 import { sendEmailCode, verifyEmailCode } from '../api/auth';
 
@@ -95,11 +96,43 @@ export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
     setAuthMessage('');
   }
 
-  function completeProfile(event) {
+  async function completeProfile(event) {
     event.preventDefault();
     if (!form.name.trim() || !form.birthDate) return setAuthMessage('이름과 생년월일을 입력해 주세요.');
     if (hasHealthInfo && !form.healthConsent) return setAuthMessage('건강 정보를 저장하려면 이용 동의가 필요해요.');
-    onComplete({ ...form });
+
+    console.log('📌 [회원가입 2단계 완료] Supabase 회원가입 정보 저장 ➔ AWS 클라우드 연동 시작:', {
+      loginId: form.loginId,
+      email: form.email,
+      name: form.name
+    });
+
+    let supabaseUserId = null;
+    if (supabase) {
+      try {
+        console.log('🚀 [Supabase Auth] 회원가입 계정 생성 요청 중...');
+        const { data, error } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: {
+            data: {
+              loginId: form.loginId,
+              name: form.name
+            }
+          }
+        });
+        if (error) {
+          console.warn('⚠️ [Supabase Auth 계정 생성 안내]:', error.message);
+        } else if (data?.user) {
+          supabaseUserId = data.user.id;
+          console.log('✅ [Supabase Auth] 회원가입 정보 저장 완료:', supabaseUserId);
+        }
+      } catch (sbErr) {
+        console.warn('⚠️ [Supabase Auth 연동 대기]:', sbErr.message);
+      }
+    }
+
+    onComplete({ ...form, supabaseUserId });
   }
 
   async function sendCode() {

@@ -5,7 +5,7 @@ import MyPageFlow from './pages/mypage/MyPageFlow';
 import LoginPage from './pages/LoginPage';
 import SignupFlow from './pages/SignupFlow';
 import { updateProfile } from './api/user';
-import { saveUserProfile } from './api/auth';
+import { saveUserProfile, getUserProfile } from './api/auth';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -55,12 +55,89 @@ function App() {
     window.history.pushState({ activeScreen: 'main', authMode, activeTab: tab }, '');
   };
 
-  // 로그인 상태 구독
+  // 소셜 로그인 / Supabase 사용자 프로필을 AWS RDS 클라우드와 상호 동기화
+  const syncSocialProfileWithCloud = async (sbUser) => {
+    if (!sbUser) return;
+    const userMeta = sbUser.user_metadata || {};
+    const userName = userMeta.full_name || userMeta.name || userMeta.user_name || sbUser.email?.split('@')[0] || '소요 여행자';
+    const email = sbUser.email || '';
+
+    console.log('📌 [소셜 로그인/Supabase 사용자 클라우드 연동]:', { id: sbUser.id, email, userName });
+
+    // 1. AWS RDS 클라우드에서 기존 프로필 조회 시도
+    let cloudProfile = null;
+    try {
+      console.log('🚀 [AWS RDS 백엔드] 사용자 프로필 조회 요청:', sbUser.id);
+      const res = await getUserProfile(sbUser.id);
+      if (res?.success && res.profile) {
+        cloudProfile = {
+          userName: res.profile.userName || userName,
+          email,
+          birthDate: res.profile.birthDate,
+          allergies: res.profile.allergies ? res.profile.allergies.split(', ') : [],
+          diseaseIds: res.profile.chronicConditions ? res.profile.chronicConditions.split(', ') : [],
+          medications: res.profile.medications || []
+        };
+        console.log('✅ [AWS RDS 백엔드] 프로필 조회 및 동기화 완료:', cloudProfile);
+      }
+    } catch (e) {
+      console.warn('⚠️ [AWS RDS 백엔드] 프로필 조회 대기:', e.message);
+    }
+
+    if (cloudProfile) {
+      await updateProfile(null, cloudProfile);
+      return;
+    }
+
+    // 2. AWS RDS에 아직 프로필이 없으면 기본 소셜 프로필 저장 (문서 알고리즘 명세 준수)
+    const newProfile = {
+      userName,
+      email,
+      birthDate: userMeta.birth_date || '1990-01-01',
+      allergies: [],
+      diseaseIds: [],
+      medications: []
+    };
+    await updateProfile(null, newProfile);
+
+    try {
+      console.log('🚀 [AWS RDS 백엔드] 소셜 사용자 기본 건강 프로필 저장 요청...');
+      await saveUserProfile({
+        userId: sbUser.id,
+        name: userName,
+        birth: newProfile.birthDate,
+        allergies: [],
+        diseases: [],
+        medications: [],
+        noAllergy: true,
+        noDisease: true,
+        noMedication: true
+      });
+      console.log('✅ [AWS RDS 백엔드] 소셜 사용자 프로필 저장 완료');
+    } catch (saveErr) {
+      console.warn('⚠️ [AWS RDS 백엔드] 소셜 프로필 저장 대기:', saveErr.message);
+    }
+  };
+
+  // 로그인 상태 구독 및 소셜 로그인 콜백 처리
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        syncSocialProfileWithCloud(session.user);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔔 [Supabase Auth 상태 변경 알림]:', event, session?.user?.email);
+      setSession(session);
+      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        await syncSocialProfileWithCloud(session.user);
+        setIsLoggedIn(true);
+        setActiveScreen('main');
+        setActiveTab('myPage');
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -82,10 +159,13 @@ function App() {
               medications: form.noMedication ? [] : form.medications
             };
 
+            const targetUserId = form.supabaseUserId || form.loginId;
+
             try {
-              // 백엔드로 건강 프로필 데이터 전송
+              // 백엔드로 건강 프로필 데이터 전송 (AWS RDS 저장)
+              console.log('🚀 [AWS RDS 백엔드] 회원가입 2단계 건강 프로필 저장 요청:', targetUserId);
               await saveUserProfile({
-                userId: session?.user?.id || form.loginId,
+                userId: targetUserId,
                 name: form.name,
                 birth: form.birthDate,
                 allergies: actualProfile.allergies,
@@ -95,20 +175,23 @@ function App() {
                 noDisease: form.noDisease,
                 noMedication: form.noMedication
               });
+              console.log('✅ [AWS RDS 백엔드] 회원가입 프로필 저장 성공');
             } catch (apiErr) {
-              console.warn('백엔드 프로필 저장 대기:', apiErr.message);
+              console.warn('⚠️ [AWS RDS 백엔드] 프로필 저장 대기:', apiErr.message);
             }
 
-            // 실제 입력한 정보로 프로필 스토어 업데이트
+            // 실제 입력한 정보로 마이페이지 스토어 업데이트
             await updateProfile(null, actualProfile);
 
-            // 가입 계정 로컬 목록에 저장
+            // 가입 계정 로컬 목록에 저장 (비밀번호 확인 및 로그인 연동용)
             try {
               const users = JSON.parse(localStorage.getItem('soyo-registered-users') || '[]');
               const filtered = users.filter((u) => u.loginId !== form.loginId);
               filtered.push({
                 loginId: form.loginId,
+                email: form.email,
                 password: form.password,
+                supabaseUserId: form.supabaseUserId,
                 profile: actualProfile
               });
               localStorage.setItem('soyo-registered-users', JSON.stringify(filtered));
@@ -131,10 +214,36 @@ function App() {
           setSignupDraft(draft || { loginId: '', password: '' });
           navigateTo('auth', 'signup');
         }}
-        onLogin={async ({ loginId, user }) => {
-          if (user?.profile) {
-            await updateProfile(null, user.profile);
+        onLogin={async ({ loginId, session: loginSession, user }) => {
+          const userId = loginSession?.user?.id || user?.supabaseUserId || user?.loginId;
+          console.log('📌 [로그인 성공 처리] 사용자 식별자:', userId);
+
+          let fetchedProfile = null;
+          if (userId) {
+            try {
+              console.log('🚀 [AWS RDS 백엔드] 사용자 프로필 조회 중:', userId);
+              const res = await getUserProfile(userId);
+              if (res?.success && res.profile) {
+                fetchedProfile = {
+                  userName: res.profile.userName,
+                  email: user?.email || loginSession?.user?.email,
+                  birthDate: res.profile.birthDate,
+                  allergies: res.profile.allergies ? res.profile.allergies.split(', ') : [],
+                  diseaseIds: res.profile.chronicConditions ? res.profile.chronicConditions.split(', ') : [],
+                  medications: res.profile.medications || []
+                };
+                console.log('✅ [AWS RDS 백엔드] 프로필 연동 완료:', fetchedProfile);
+              }
+            } catch (err) {
+              console.warn('⚠️ [AWS RDS 백엔드] 프로필 조회 대기:', err.message);
+            }
           }
+
+          const finalProfile = fetchedProfile || user?.profile;
+          if (finalProfile) {
+            await updateProfile(null, finalProfile);
+          }
+
           setIsLoggedIn(true);
           navigateTo('main', 'login', 'myPage'); // 로그인 성공 시 마이페이지로 이동
         }}
@@ -148,11 +257,20 @@ function App() {
     navigateTo('auth', 'login');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        // ignore
+      }
+    }
+    setSession(null);
     setIsLoggedIn(false);
     setAuthNotice('로그아웃되었습니다.');
     navigateTo('auth', 'login');
   };
+
 
   return (
     <div style={{ maxWidth: '420px', minHeight: '100vh', margin: '0 auto', display: 'flex', flexDirection: 'column', background: '#fff', boxShadow: '0 0 0 1px #eee' }}>
