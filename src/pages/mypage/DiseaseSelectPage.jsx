@@ -1,0 +1,66 @@
+import React, { useState } from 'react';
+import { DISEASE_CATEGORIES } from '../../data/chronicDiseases';
+
+// No.12 기저질환 선택
+// 변수: diseaseList(질병 선택 목록 — data/chronicDiseases.js), diseaseIds(선택한 질병), isLoading
+function DiseaseSelectPage({ profile, isLoading, onSave }) {
+  const [diseaseIds, setDiseaseIds] = useState(profile.diseaseIds ?? []);
+  // 화면 전용: 지금 펼쳐진 대분류 (한 번에 하나)
+  const [openCategoryId, setOpenCategoryId] = useState(null);
+
+  const toggleDisease = (id) => {
+    setDiseaseIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  };
+
+  return (
+    <div className="mp-page">
+      <h1 className="mp-title mp-title-center">기저질환 선택</h1>
+
+      <ul className="mp-category-list">
+        {DISEASE_CATEGORIES.map((category) => {
+          const isOpen = openCategoryId === category.id;
+          const selectedCount = category.diseases.filter((d) => diseaseIds.includes(d.id)).length;
+          return (
+            <li key={category.id}>
+              <button
+                type="button"
+                className="mp-category"
+                aria-expanded={isOpen}
+                onClick={() => setOpenCategoryId(isOpen ? null : category.id)}
+              >
+                <span className={`mp-category-icon ${isOpen || selectedCount > 0 ? 'active' : ''}`} aria-hidden="true" />
+                <span className="mp-category-name">
+                  {category.name}
+                  {selectedCount > 0 && <small>{selectedCount}개 선택</small>}
+                </span>
+                <span className={`mp-chevron ${isOpen ? 'open' : ''}`} aria-hidden="true">›</span>
+              </button>
+
+              {isOpen && (
+                <fieldset className="mp-disease-box">
+                  <legend>{category.name}</legend>
+                  {category.diseases.map((disease) => (
+                    <label key={disease.id} className="mp-check">
+                      <input
+                        type="checkbox"
+                        checked={diseaseIds.includes(disease.id)}
+                        onChange={() => toggleDisease(disease.id)}
+                      />
+                      {disease.name}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <button type="button" className="mp-primary-button" disabled={isLoading} onClick={() => onSave({ diseaseIds })}>
+        {isLoading ? '저장 중...' : '저장'}
+      </button>
+    </div>
+  );
+}
+
+export default DiseaseSelectPage;

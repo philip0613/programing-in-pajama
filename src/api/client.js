@@ -19,10 +19,26 @@ export async function apiFetch(path, { token, headers, ...options } = {}) {
   });
 
   const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(data?.error || `요청 실패 (HTTP ${res.status})`);
+  // 새 응답 형식 { success, data, error } 의 실패(success: false)도 에러로 처리
+  if (!res.ok || data?.success === false) {
+    throw new ApiError(data?.error, res.status);
   }
   return data;
+}
+
+// 새 응답 형식 { success, data, error } 에서 data 만 꺼내기
+// (기존 형식을 같이 쓰는 /api/test 같은 곳은 apiFetch 를 그대로 쓰세요)
+export const apiData = (path, options) => apiFetch(path, options).then((res) => res?.data);
+
+// 서버 에러 — 기존 형식(글자)과 새 형식({ title, code, message }) 모두 처리
+export class ApiError extends Error {
+  constructor(error, status) {
+    const isObject = error && typeof error === 'object';
+    super((isObject ? error.message : error) || `요청 실패 (HTTP ${status})`);
+    this.status = status;
+    this.code = isObject ? error.code ?? null : null;   // 예: 'WRONG_PASSWORD' (화면별로 다르게 처리할 때)
+    this.title = isObject ? error.title ?? null : null; // 예: '로그인 실패'
+  }
 }
 
 // 백엔드 연결 테스트 (GET /api/test)

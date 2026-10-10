@@ -1,27 +1,31 @@
 import { useState } from 'react';
 
-const socialButtons = [
+// 로그인 화면 — 변수 이름은 SOYO 통합 변수 명세서 기준 (⚠️ loginId 는 명세서에 아직 없음)
+// 실제 로그인(Supabase 연결)은 나중에. 지금은 아이디·비밀번호를 입력하면 시연용으로 로그인돼요.
+
+const socialLogins = [
   { name: '카카오', image: '/pic/카카오톡.png', className: 'kakao' },
   { name: '네이버', image: '/pic/네이버.png', className: 'naver' },
   { name: '구글', image: '/pic/구글.png', className: 'google' },
 ];
 
-export default function LoginPage({ onSignup, initialNotice = '' }) {
-  const [userId, setUserId] = useState(() => localStorage.getItem('soyo-saved-id') ?? '');
+export default function LoginPage({ onSignup, onLogin, onSkip, initialNotice = '' }) {
+  const [loginId, setLoginId] = useState(() => localStorage.getItem('soyo-saved-id') ?? '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberId, setRememberId] = useState(Boolean(localStorage.getItem('soyo-saved-id')));
-  const [message, setMessage] = useState(initialNotice);
+  const [authMessage, setAuthMessage] = useState(initialNotice);
 
   function handleLogin(event) {
     event.preventDefault();
-    if (rememberId) localStorage.setItem('soyo-saved-id', userId);
+    if (rememberId) localStorage.setItem('soyo-saved-id', loginId);
     else localStorage.removeItem('soyo-saved-id');
-    setMessage(userId && password ? '로그인 기능은 서버 연결 후 사용할 수 있어요.' : '아이디와 비밀번호를 입력해 주세요.');
+    if (!loginId || !password) return setAuthMessage('아이디와 비밀번호를 입력해 주세요.');
+    onLogin({ loginId }); // 시연용 로그인
   }
 
   function showNotice(text) {
-    setMessage(text);
+    setAuthMessage(text);
   }
 
   return (
@@ -42,8 +46,8 @@ export default function LoginPage({ onSignup, initialNotice = '' }) {
             type="text"
             placeholder="아이디"
             autoComplete="username"
-            value={userId}
-            onChange={(event) => setUserId(event.target.value)}
+            value={loginId}
+            onChange={(event) => setLoginId(event.target.value)}
           />
 
           <label className="visually-hidden" htmlFor="user-password">비밀번호</label>
@@ -79,14 +83,14 @@ export default function LoginPage({ onSignup, initialNotice = '' }) {
             <button className="text-button find-button" type="button" onClick={() => showNotice('아이디/비밀번호 찾기는 준비 중이에요.')}>아이디/비밀번호 찾기</button>
           </div>
 
-          {message && <p className="form-message" role="status">{message}</p>}
+          {authMessage && <p className="form-message" role="status">{authMessage}</p>}
           <button className="primary-button" type="submit">로그인</button>
         </form>
 
         <div className="social-section">
           <p className="social-caption">또는 소셜 계정으로 로그인</p>
           <div className="social-buttons">
-            {socialButtons.map((social) => (
+            {socialLogins.map((social) => (
               <button
                 key={social.name}
                 className={`social-button ${social.className}`}
@@ -102,7 +106,7 @@ export default function LoginPage({ onSignup, initialNotice = '' }) {
 
         <div className="bottom-actions">
           <button className="signup-button" type="button" onClick={onSignup}>회원가입</button>
-          <button className="text-button skip-button" type="button" onClick={() => showNotice('둘러보기는 메인 화면 구현 후 사용할 수 있어요.')}>건너뛰기</button>
+          <button className="text-button skip-button" type="button" onClick={onSkip}>건너뛰기</button>
         </div>
       </section>
     </main>

@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { USE_MOCK } from './api/client';
-import { getPosts } from './api/posts';
-import ApiHealthCheck from './components/ApiHealthCheck';
-import AuthPanel from './components/AuthPanel';
-import PostForm from './components/PostForm';
-import PostList from './components/PostList';
+import BottomNav from './components/BottomNav';
+import MyPageFlow from './pages/mypage/MyPageFlow';
+import LoginPage from './pages/LoginPage';
+import SignupFlow from './pages/SignupFlow';
+import { updateProfile } from './api/user';
 
 function App() {
   const [session, setSession] = useState(null);
-  const [posts, setPosts] = useState([]);
+  // 변수 명세서: activeScreen(현재 화면), authMode(login / signup), isLoggedIn
+  const [activeScreen, setActiveScreen] = useState('auth'); // 'auth' | 'main'
+  const [authMode, setAuthMode] = useState('login');
+  const [authNotice, setAuthNotice] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // 하단 메뉴 선택 (변수 명세서 activeTab: walk / recommended / records / myPage)
+  const [activeTab, setActiveTab] = useState('recommended');
+  const [myPageResetKey, setMyPageResetKey] = useState(0);
+
+  const handleTabChange = (tab) => {
+    if (tab === 'myPage') setMyPageResetKey((key) => key + 1);
+    setActiveTab(tab);
+  };
 
   // 로그인 상태 구독
   useEffect(() => {
@@ -21,32 +32,52 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 게시글 목록 불러오기
-  const fetchPosts = async () => {
-    try {
-      const data = await getPosts();
-      if (Array.isArray(data)) setPosts(data);
-    } catch (err) {
-      console.error('게시글 로드 실패:', err);
+  // 로그인 · 회원가입 화면 (하단 메뉴 없이 전체 화면)
+  if (activeScreen === 'auth') {
+    if (authMode === 'signup') {
+      return (
+        <SignupFlow
+          onBack={() => setAuthMode('login')}
+          onComplete={async (form) => {
+            // 시연용: 가입 정보를 가짜 회원 정보에 저장 (백엔드 연결 후 실제 가입으로 교체)
+            await updateProfile(null, { userName: form.name, email: form.email, birthDate: form.birthDate, allergies: form.allergies, diseaseIds: form.diseaseIds, medications: form.medications });
+            setAuthNotice('가입 정보 입력이 완료됐어요. 로그인해 주세요.');
+            setAuthMode('login');
+          }}
+        />
+      );
     }
-  };
+    return (
+      <LoginPage
+        initialNotice={authNotice}
+        onSignup={() => { setAuthNotice(''); setAuthMode('signup'); }}
+        onLogin={() => { setIsLoggedIn(true); setActiveScreen('main'); }}
+        onSkip={() => setActiveScreen('main')}
+      />
+    );
+  }
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
+  const goToLogin = () => { setAuthNotice(''); setAuthMode('login'); setActiveScreen('auth'); };
 
   return (
-    <div style={{ maxWidth: '640px', margin: '40px auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      <h2>🚀 SOYO 미니 게시판</h2>
+    <div style={{ maxWidth: '420px', minHeight: '100vh', margin: '0 auto', display: 'flex', flexDirection: 'column', background: '#fff', boxShadow: '0 0 0 1px #eee' }}>
+      <main style={{ flex: 1 }}>
+        {activeTab === 'myPage' && <MyPageFlow session={session} resetKey={myPageResetKey} isLoggedIn={isLoggedIn} onLogin={goToLogin} onLogout={() => setIsLoggedIn(false)} />}
 
-      {USE_MOCK
-        ? <p style={{ padding: '8px 12px', background: '#ffeaa7', borderRadius: '6px', fontSize: '13px' }}>🧪 목(mock) 모드: 백엔드 대신 가짜 데이터를 사용 중</p>
-        : <ApiHealthCheck />}
-      <AuthPanel session={session} />
-      {/* 목 모드에서는 로그인 없이도 글 작성 화면을 개발할 수 있음 */}
-      {(session || USE_MOCK) && <PostForm token={session?.access_token} onCreated={fetchPosts} />}
-      <PostList posts={posts} />
+        {activeTab === 'walk' && <ComingSoon name="산책" />}
+        {activeTab === 'recommended' && <ComingSoon name="홈" />}
+      </main>
+      <BottomNav activeTab={activeTab} onChange={handleTabChange} />
     </div>
+  );
+}
+
+// 아직 만들지 않은 탭에 보여주는 안내
+function ComingSoon({ name }) {
+  return (
+    <p style={{ marginTop: '80px', textAlign: 'center', color: '#888', fontSize: '14px' }}>
+      {name} 화면은 구현 예정이에요
+    </p>
   );
 }
 
