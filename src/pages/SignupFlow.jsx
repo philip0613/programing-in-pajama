@@ -14,7 +14,7 @@ export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
   const [form, setForm] = useState({
     loginId: initialDraft?.loginId || '',          // 로그인 화면에서 전달받은 아이디 자동 채움
     password: initialDraft?.password || '',        // 로그인 화면에서 전달받은 비밀번호 자동 채움
-    passwordConfirm: initialDraft?.password || '', // 비밀번호 확인 자동 채움
+    passwordConfirm: '',                           // 보안 검증을 위해 비밀번호 확인은 빈 칸 유지
     email: '',
     code: '',             // 이메일 인증번호
     termsAgreed: false,   // 필수 약관 동의
