@@ -40,15 +40,24 @@ function App() {
         <SignupFlow
           onBack={() => setAuthMode('login')}
           onComplete={async (form) => {
+            const actualProfile = {
+              userName: form.name,
+              email: form.email,
+              birthDate: form.birthDate,
+              allergies: form.noAllergy ? [] : form.allergies,
+              diseaseIds: form.noDisease ? [] : form.diseaseIds,
+              medications: form.noMedication ? [] : form.medications
+            };
+
             try {
               // 백엔드로 건강 프로필 데이터 전송
               await saveUserProfile({
                 userId: session?.user?.id || form.loginId,
                 name: form.name,
                 birth: form.birthDate,
-                allergies: form.allergies,
-                diseases: form.diseaseIds,
-                medications: form.medications,
+                allergies: actualProfile.allergies,
+                diseases: actualProfile.diseaseIds,
+                medications: actualProfile.medications,
                 noAllergy: form.noAllergy,
                 noDisease: form.noDisease,
                 noMedication: form.noMedication
@@ -56,9 +65,14 @@ function App() {
             } catch (apiErr) {
               console.warn('백엔드 프로필 저장 대기:', apiErr.message);
             }
-            await updateProfile(null, { userName: form.name, email: form.email, birthDate: form.birthDate, allergies: form.allergies, diseaseIds: form.diseaseIds, medications: form.medications });
-            setAuthNotice('가입 정보 입력이 완료됐어요. 로그인해 주세요.');
-            setAuthMode('login');
+
+            // 실제 입력한 정보로 프로필 스토어 업데이트
+            await updateProfile(null, actualProfile);
+
+            // 가입 완료 후 즉시 로그인 상태로 마이페이지 진입
+            setIsLoggedIn(true);
+            setActiveScreen('main');
+            setActiveTab('myPage');
           }}
         />
       );
