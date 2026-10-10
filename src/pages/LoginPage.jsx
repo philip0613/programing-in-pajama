@@ -16,10 +16,31 @@ export default function LoginPage({ onSignup, onLogin, onSkip, initialNotice = '
 
   function handleLogin(event) {
     event.preventDefault();
+    if (!loginId || !password) return setAuthMessage('아이디와 비밀번호를 입력해 주세요.');
+
+    // 가입된 사용자 목록 확인 (로컬 저장소 및 기본 계정)
+    let registeredUsers = [];
+    try {
+      registeredUsers = JSON.parse(localStorage.getItem('soyo-registered-users') || '[]');
+    } catch (e) {
+      registeredUsers = [];
+    }
+
+    const matchedUser = registeredUsers.find(
+      (u) => u.loginId === loginId && u.password === password
+    );
+
+    if (!matchedUser) {
+      // 기획서 명세: 일치하지 않을 경우 '아이디/비밀번호를 확인하세요' 오류 표시 및 비밀번호 삭제
+      setPassword('');
+      return setAuthMessage('아이디/비밀번호를 확인하세요.');
+    }
+
     if (rememberId) localStorage.setItem('soyo-saved-id', loginId);
     else localStorage.removeItem('soyo-saved-id');
-    if (!loginId || !password) return setAuthMessage('아이디와 비밀번호를 입력해 주세요.');
-    onLogin({ loginId }); // 시연용 로그인
+
+    setAuthMessage('');
+    onLogin({ loginId, user: matchedUser });
   }
 
   function showNotice(text) {

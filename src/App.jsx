@@ -69,10 +69,23 @@ function App() {
             // 실제 입력한 정보로 프로필 스토어 업데이트
             await updateProfile(null, actualProfile);
 
-            // 가입 완료 후 즉시 로그인 상태로 마이페이지 진입
-            setIsLoggedIn(true);
-            setActiveScreen('main');
-            setActiveTab('myPage');
+            // 가입 계정 로컬 목록에 저장
+            try {
+              const users = JSON.parse(localStorage.getItem('soyo-registered-users') || '[]');
+              const filtered = users.filter((u) => u.loginId !== form.loginId);
+              filtered.push({
+                loginId: form.loginId,
+                password: form.password,
+                profile: actualProfile
+              });
+              localStorage.setItem('soyo-registered-users', JSON.stringify(filtered));
+            } catch (e) {
+              // ignore
+            }
+
+            // 가입 완료 후 로그인 화면으로 돌아가서 로그인하도록 안내
+            setAuthNotice('회원가입이 완료되었습니다. 로그인해 주세요.');
+            setAuthMode('login');
           }}
         />
       );
@@ -81,7 +94,14 @@ function App() {
       <LoginPage
         initialNotice={authNotice}
         onSignup={() => { setAuthNotice(''); setAuthMode('signup'); }}
-        onLogin={() => { setIsLoggedIn(true); setActiveScreen('main'); }}
+        onLogin={async ({ loginId, user }) => {
+          if (user?.profile) {
+            await updateProfile(null, user.profile);
+          }
+          setIsLoggedIn(true);
+          setActiveScreen('main');
+          setActiveTab('myPage'); // 가입/로그인 후 마이페이지로 바로 안내
+        }}
         onSkip={() => setActiveScreen('main')}
       />
     );
