@@ -53,32 +53,32 @@ function AuthPanel({ session }) {
         </div>
       ) : (
         <div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
             <input
               type="email"
               placeholder="이메일"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{ flex: 1, padding: '8px' }}
+              style={{ flex: '1 1 100%', minWidth: 0, padding: '10px', boxSizing: 'border-box' }}
             />
             <input
               type="password"
               placeholder="비밀번호"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ flex: 1, padding: '8px' }}
+              style={{ flex: '1 1 100%', minWidth: 0, padding: '10px', boxSizing: 'border-box' }}
             />
             <button
               onClick={handleLogin}
               disabled={authLoading}
-              style={{ padding: '8px 14px', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '10px', cursor: 'pointer' }}
             >
               로그인
             </button>
             <button
               onClick={handleSignUp}
               disabled={authLoading}
-              style={{ padding: '8px 14px', cursor: 'pointer', backgroundColor: '#e9ecef', border: '1px solid #ced4da', borderRadius: '4px' }}
+              style={{ flex: 1, padding: '10px', cursor: 'pointer', backgroundColor: '#e9ecef', border: '1px solid #ced4da', borderRadius: '4px' }}
             >
               회원가입
             </button>
