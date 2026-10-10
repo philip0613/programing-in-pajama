@@ -2,13 +2,13 @@
 // 변수 이름은 변수 명세서(02 건강 정보와 내 정보)를 따릅니다.
 
 const DEFAULT_PROFILE = {
-  userName: '홍길동',
-  email: 'korean1234@gmail.com',
+  userName: '소요 여행자',
+  email: '',
   profileImage: null,
-  birthDate: '2000-01-01',
+  birthDate: '1970-01-01',
   allergies: [],
-  diseaseIds: ['D05'],
-  medications: ['메트포르민', '아스피린', '오메가3'],
+  diseaseIds: [],
+  medications: [],
 };
 
 function loadStoredProfile() {

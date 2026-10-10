@@ -53,8 +53,9 @@ export default function LoginPage({ onSignup, onLogin, onSkip, initialNotice = '
     );
 
     if (!matchedUser) {
-      // 기획서 명세: 일치하지 않을 경우 '아이디/비밀번호를 확인하세요' 오류 표시 및 비밀번호 삭제
+      // 기획서 1.1 명세: 일치하지 않을 경우 '아이디/비밀번호를 확인하세요' 오류 표시 및 ID/PW 입력 내용 모두 삭제
       console.warn('❌ [로그인 실패] 계정 불일치');
+      setLoginId('');
       setPassword('');
       return setAuthMessage('아이디/비밀번호를 확인하세요.');
     }

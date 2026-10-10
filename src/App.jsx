@@ -174,29 +174,25 @@ function App() {
               if (form.email) localStorage.setItem('soyo-current-email', form.email);
             }
 
-            try {
-              // 백엔드로 건강 프로필 데이터 전송 (AWS RDS 저장)
-              console.log('🚀 [AWS RDS 백엔드] 회원가입 2단계 건강 프로필 저장 요청:', targetUserId);
-              const saveRes = await saveUserProfile({
-                userId: targetUserId,
-                name: form.name,
-                birth: form.birthDate,
-                allergies: actualProfile.allergies,
-                diseases: actualProfile.diseaseIds,
-                medications: actualProfile.medications,
-                noAllergy: form.noAllergy,
-                noDisease: form.noDisease,
-                noMedication: form.noMedication
-              });
-              console.log('✅ [AWS RDS 백엔드] 회원가입 프로필 저장 성공:', saveRes);
-            } catch (apiErr) {
-              console.error('❌ [AWS RDS 백엔드] 프로필 저장 오류:', apiErr.message);
-            }
+            // 백엔드로 건강 프로필 데이터 전송 (AWS RDS 저장)
+            console.log('🚀 [AWS RDS 백엔드] 회원가입 2단계 건강 프로필 저장 요청:', targetUserId);
+            const saveRes = await saveUserProfile({
+              userId: targetUserId,
+              name: form.name,
+              birth: form.birthDate,
+              allergies: actualProfile.allergies,
+              diseases: actualProfile.diseaseIds,
+              medications: actualProfile.medications,
+              noAllergy: form.noAllergy,
+              noDisease: form.noDisease,
+              noMedication: form.noMedication
+            });
+            console.log('✅ [AWS RDS 백엔드] 회원가입 프로필 저장 성공:', saveRes);
 
             // 실제 입력한 정보로 마이페이지 스토어 업데이트
             await updateProfile(null, actualProfile);
 
-            // 가입 계정 로컬 목록에 저장 (비밀번호 확인 및 로그인 연동용)
+            // 가입 계정 로컬 목록에 저장 (재로그인 일치 검증용)
             try {
               const users = JSON.parse(localStorage.getItem('soyo-registered-users') || '[]');
               const filtered = users.filter((u) => u.loginId !== form.loginId);
@@ -212,9 +208,9 @@ function App() {
               // ignore
             }
 
-            // 가입 완료 후 로그인 화면으로 돌아가서 로그인하도록 안내
-            setAuthNotice('회원가입이 완료되었습니다. 로그인해 주세요.');
-            navigateTo('auth', 'login');
+            // 기획서 1.4 명세: 시작하기 클릭 시 메인화면으로 이동 (로그인 상태 완료)
+            setIsLoggedIn(true);
+            navigateTo('main', 'login', 'myPage');
           }}
         />
       );

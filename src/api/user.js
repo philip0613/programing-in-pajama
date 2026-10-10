@@ -8,8 +8,8 @@ export const getProfile = async (token) => {
     try {
       console.log('🚀 [AWS RDS] 마이페이지 프로필 조회 요청:', currentUserId);
       const res = await getUserProfile(currentUserId);
-      if (res?.success && res.profile) {
-        const p = res.profile;
+      const p = res?.profile || res?.data;
+      if (res?.success && p) {
         const profile = {
           userId: p.userId,
           userName: p.userName || '소요 여행자',
@@ -17,7 +17,7 @@ export const getProfile = async (token) => {
           profileImage: null,
           birthDate: p.birthDate ? String(p.birthDate).split('T')[0] : '1970-01-01',
           allergies: Array.isArray(p.allergies) ? p.allergies : (p.allergies ? String(p.allergies).split(', ') : []),
-          diseaseIds: Array.isArray(p.chronicConditions) ? p.chronicConditions : (p.chronicConditions ? String(p.chronicConditions).split(', ') : []),
+          diseaseIds: Array.isArray(p.chronicConditions || p.diseaseIds) ? (p.chronicConditions || p.diseaseIds) : [],
           medications: Array.isArray(p.medications) ? p.medications : []
         };
         await mockUpdateProfile(profile);
@@ -51,7 +51,8 @@ export const updateProfile = async (token, changes) => {
       });
       console.log('✅ [AWS RDS] 마이페이지 변경사항 DB 영구 저장 완료');
     } catch (e) {
-      console.warn('⚠️ [AWS RDS] 마이페이지 프로필 DB 저장 실패:', e.message);
+      console.error('❌ [AWS RDS] 마이페이지 프로필 DB 저장 실패:', e.message);
+      throw e;
     }
   }
   return updatedLocal;

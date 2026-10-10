@@ -20,7 +20,8 @@ export async function apiFetch(path, { token, headers, ...options } = {}) {
   const data = await res.json().catch(() => null);
   // 새 응답 형식 { success, data, error } 의 실패(success: false)도 에러로 처리
   if (!res.ok || data?.success === false) {
-    throw new ApiError(data?.error, res.status);
+    const errorMsg = data?.error || (res.status === 404 ? '서버 API 엔드포인트를 찾을 수 없습니다 (404).' : `요청 실패 (HTTP ${res.status})`);
+    throw new ApiError(errorMsg, res.status);
   }
   return data;
 }

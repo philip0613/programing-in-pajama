@@ -132,7 +132,13 @@ export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
       }
     }
 
-    onComplete({ ...form, supabaseUserId });
+    try {
+      setAuthMessage('회원정보를 서버에 저장하는 중입니다...');
+      await onComplete({ ...form, supabaseUserId });
+    } catch (saveErr) {
+      console.error('❌ [회원가입 완료 처리 오류]:', saveErr);
+      setAuthMessage(saveErr.message || '회원정보 저장에 실패했습니다. 다시 시도해 주세요.');
+    }
   }
 
   async function sendCode() {
