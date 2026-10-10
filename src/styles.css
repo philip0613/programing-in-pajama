@@ -466,3 +466,13 @@ button {
 
   .brand-logo { margin-bottom: 24px; }
 }
+
+/* 기저질환 선택 팝업: 엑셀 목록(8개 분류 · 26개 질환)이라 분류별로 묶고 스크롤 */
+.picker-scroll { max-height: 55vh; overflow-y: auto; display: grid; gap: 14px; padding-right: 2px; }
+.picker-group-title { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #444; }
+
+/* 약관 · 건강 정보 이용 동의 체크박스 */
+.consent-check { align-items: flex-start; margin-top: 6px; line-height: 1.4; }
+.consent-check input { margin-top: 2px; flex: none; }
+
+.password-hint.invalid { color: #e74c3c; }
