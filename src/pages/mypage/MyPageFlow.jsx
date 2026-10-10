@@ -19,11 +19,15 @@ function MyPageFlow({ session, resetKey, isLoggedIn, onLogin, onLogout }) {
 
   useEffect(() => {
     setIsLoading(true);
+    setError(null);
     getProfile(session?.access_token)
       .then(setProfile)
-      .catch(() => setError('정보를 불러오지 못했어요'))
+      .catch((err) => {
+        console.warn('⚠️ [마이페이지] 프로필 로드 실패:', err);
+        setError('정보를 불러오지 못했어요');
+      })
       .finally(() => setIsLoading(false));
-  }, [session]);
+  }, [session, resetKey, isLoggedIn]);
 
   useEffect(() => {
     if (!toast) return;

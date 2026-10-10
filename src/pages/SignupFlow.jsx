@@ -142,12 +142,18 @@ export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
       return setAuthMessage('먼저 올바른 E-mail 주소를 입력해 주세요.');
     }
 
-    console.log('🚀 [이메일 인증번호 발송 요청] 대상 이메일 주소:', form.email);
-    const res = await sendEmailCode(form.email);
-    console.log('✅ [인증번호 발송 성공] 인증번호(123456)가 발송되었습니다.');
-    setCodeSent(true);
-    setVerified(false);
-    setAuthMessage(res?.message || '인증코드가 발송되었습니다. (인증번호: 123456)');
+    try {
+      console.log('🚀 [이메일 인증번호 발송 요청] 대상 이메일 주소:', form.email);
+      setAuthMessage('인증번호를 발송하는 중입니다...');
+      const res = await sendEmailCode(form.email);
+      console.log('✅ [인증번호 발송 완료] 백엔드 응답:', res?.message);
+      setCodeSent(true);
+      setVerified(false);
+      setAuthMessage(res?.message || '인증코드가 발송되었습니다. 메일함을 확인해 주세요.');
+    } catch (err) {
+      console.error('❌ [인증번호 발송 실패]:', err.message);
+      setAuthMessage(err.message || '인증코드 발송에 실패했습니다. 다시 시도해 주세요.');
+    }
   }
 
   async function verifyCode() {
@@ -157,16 +163,23 @@ export default function SignupFlow({ onBack, onComplete, initialDraft = {} }) {
       return setAuthMessage('인증번호를 입력해 주세요.');
     }
 
-    const res = await verifyEmailCode(form.email, form.code);
-    if (res?.verified) {
-      console.log('✅ [이메일 인증 성공] 이메일 인증이 성공적으로 완료되었습니다.');
-      setVerified(true);
-      setAuthMessage('E-mail 인증이 완료됐어요.');
-      return;
+    try {
+      console.log('🚀 [인증번호 검증 요청] 코드 확인 중...');
+      const res = await verifyEmailCode(form.email, form.code);
+      if (res?.verified) {
+        console.log('✅ [이메일 인증 성공] 이메일 인증이 성공적으로 완료되었습니다.');
+        setVerified(true);
+        setAuthMessage(res?.message || 'E-mail 인증이 완료됐어요.');
+      } else {
+        console.warn('❌ [인증 실패] 인증번호 불일치');
+        setVerified(false);
+        setAuthMessage(res?.error || '인증번호를 확인해 주세요.');
+      }
+    } catch (err) {
+      console.error('❌ [인증 확인 오류]:', err.message);
+      setVerified(false);
+      setAuthMessage(err.message || '인증번호가 일치하지 않습니다.');
     }
-
-    console.warn('❌ [인증 실패] 인증번호가 일치하지 않습니다.');
-    setAuthMessage('인증번호를 확인해 주세요. (인증번호: 123456)');
   }
 
   function addMedication(event) {

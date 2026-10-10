@@ -67,16 +67,24 @@ function App() {
     // 1. AWS RDS 클라우드에서 기존 프로필 조회 시도
     let cloudProfile = null;
     try {
+      localStorage.setItem('soyo-current-user-id', sbUser.id);
+      if (email) localStorage.setItem('soyo-current-email', email);
       console.log('🚀 [AWS RDS 백엔드] 사용자 프로필 조회 요청:', sbUser.id);
       const res = await getUserProfile(sbUser.id);
       if (res?.success && res.profile) {
         cloudProfile = {
           userName: res.profile.userName || userName,
           email,
-          birthDate: res.profile.birthDate,
-          allergies: res.profile.allergies ? res.profile.allergies.split(', ') : [],
-          diseaseIds: res.profile.chronicConditions ? res.profile.chronicConditions.split(', ') : [],
-          medications: res.profile.medications || []
+          birthDate: res.profile.birthDate ? String(res.profile.birthDate).split('T')[0] : '1990-01-01',
+          allergies: Array.isArray(res.profile.allergies)
+            ? res.profile.allergies
+            : (res.profile.allergies ? String(res.profile.allergies).split(', ') : []),
+          diseaseIds: Array.isArray(res.profile.chronicConditions)
+            ? res.profile.chronicConditions
+            : (res.profile.chronicConditions ? String(res.profile.chronicConditions).split(', ') : []),
+          medications: Array.isArray(res.profile.medications)
+            ? res.profile.medications
+            : []
         };
         console.log('✅ [AWS RDS 백엔드] 프로필 조회 및 동기화 완료:', cloudProfile);
       }
@@ -161,10 +169,15 @@ function App() {
 
             const targetUserId = form.supabaseUserId || form.loginId;
 
+            if (targetUserId) {
+              localStorage.setItem('soyo-current-user-id', targetUserId);
+              if (form.email) localStorage.setItem('soyo-current-email', form.email);
+            }
+
             try {
               // 백엔드로 건강 프로필 데이터 전송 (AWS RDS 저장)
               console.log('🚀 [AWS RDS 백엔드] 회원가입 2단계 건강 프로필 저장 요청:', targetUserId);
-              await saveUserProfile({
+              const saveRes = await saveUserProfile({
                 userId: targetUserId,
                 name: form.name,
                 birth: form.birthDate,
@@ -175,9 +188,9 @@ function App() {
                 noDisease: form.noDisease,
                 noMedication: form.noMedication
               });
-              console.log('✅ [AWS RDS 백엔드] 회원가입 프로필 저장 성공');
+              console.log('✅ [AWS RDS 백엔드] 회원가입 프로필 저장 성공:', saveRes);
             } catch (apiErr) {
-              console.warn('⚠️ [AWS RDS 백엔드] 프로필 저장 대기:', apiErr.message);
+              console.error('❌ [AWS RDS 백엔드] 프로필 저장 오류:', apiErr.message);
             }
 
             // 실제 입력한 정보로 마이페이지 스토어 업데이트
@@ -218,6 +231,12 @@ function App() {
           const userId = loginSession?.user?.id || user?.supabaseUserId || user?.loginId;
           console.log('📌 [로그인 성공 처리] 사용자 식별자:', userId);
 
+          if (userId) {
+            localStorage.setItem('soyo-current-user-id', userId);
+            const userEmail = user?.email || loginSession?.user?.email;
+            if (userEmail) localStorage.setItem('soyo-current-email', userEmail);
+          }
+
           let fetchedProfile = null;
           if (userId) {
             try {
@@ -226,11 +245,17 @@ function App() {
               if (res?.success && res.profile) {
                 fetchedProfile = {
                   userName: res.profile.userName,
-                  email: user?.email || loginSession?.user?.email,
-                  birthDate: res.profile.birthDate,
-                  allergies: res.profile.allergies ? res.profile.allergies.split(', ') : [],
-                  diseaseIds: res.profile.chronicConditions ? res.profile.chronicConditions.split(', ') : [],
-                  medications: res.profile.medications || []
+                  email: user?.email || loginSession?.user?.email || localStorage.getItem('soyo-current-email') || '',
+                  birthDate: res.profile.birthDate ? String(res.profile.birthDate).split('T')[0] : '1970-01-01',
+                  allergies: Array.isArray(res.profile.allergies)
+                    ? res.profile.allergies
+                    : (res.profile.allergies ? String(res.profile.allergies).split(', ') : []),
+                  diseaseIds: Array.isArray(res.profile.chronicConditions)
+                    ? res.profile.chronicConditions
+                    : (res.profile.chronicConditions ? String(res.profile.chronicConditions).split(', ') : []),
+                  medications: Array.isArray(res.profile.medications)
+                    ? res.profile.medications
+                    : []
                 };
                 console.log('✅ [AWS RDS 백엔드] 프로필 연동 완료:', fetchedProfile);
               }
@@ -258,6 +283,8 @@ function App() {
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem('soyo-current-user-id');
+    localStorage.removeItem('soyo-current-email');
     if (supabase) {
       try {
         await supabase.auth.signOut();
